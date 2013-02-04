@@ -112,7 +112,7 @@ writeEPUB opts doc@(Pandoc meta _) = do
        (transformInlines (writerHTMLMathMethod opts') sourceDir picsRef) doc
   pics <- readIORef picsRef
   let readPicEntry (oldsrc, newsrc) = do
-        (img,_) <- fetchItem sourceDir oldsrc
+        (img,_) <- fetchItem sourceDir (fixExtension oldsrc)
         return $ toEntry newsrc epochtime $ B.fromChunks . (:[]) $ img
   picEntries <- mapM readPicEntry pics
 
@@ -368,13 +368,19 @@ metadataElement version metadataXML uuid lang title authors date currentTime mbC
 showDateTimeISO8601 :: UTCTime -> String
 showDateTimeISO8601 = formatTime defaultTimeLocale "%FT%TZ"
 
+fixExtension :: String -> String
+fixExtension fn =
+    if null (takeExtension fn)
+        then fn ++ ".svg"
+        else fn
+
 transformInlines :: HTMLMathMethod
                  -> FilePath
                  -> IORef [(FilePath, FilePath)] -- ^ (oldpath, newpath) images
                  -> [Inline]
                  -> IO [Inline]
 transformInlines _ _ _ (Image lab (src,_) : xs)
-  | isNothing (imageTypeOf src) = return $ Emph lab : xs
+  | isNothing (imageTypeOf $ fixExtension src) = return $ Emph lab : xs
 transformInlines _ sourceDir picsRef (Image lab (src,tit) : xs) = do
   let src' = unEscapeString src
   pics <- readIORef picsRef
